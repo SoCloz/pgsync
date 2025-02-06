@@ -5,7 +5,7 @@ module PgSync
     attr_reader :source, :destination, :config, :table, :opts, :destination_table, :destination_schema
     attr_accessor :from_columns, :to_columns, :from_sequences, :to_sequences, :to_primary_key
 
-    def initialize(source:, destination:, config:, table:, opts:, tenant:)
+    def initialize(source:, destination:, config:, table:, opts:, destination_schema_name:)
       @source = source
       @destination = destination
       @config = config
@@ -13,8 +13,8 @@ module PgSync
       @opts = opts
       @from_sequences = []
       @to_sequences = []
-      @destination_table = Table.new(tenant, table.name)
-      @destination_schema = tenant
+      @destination_table = destination_schema_name.nil? ? table : Table.new(destination_schema_name, table.name)
+      @destination_schema = destination_schema_name.nil? ? table.schema : destination_schema_name
     end
 
     def quoted_table
@@ -167,18 +167,18 @@ module PgSync
         copy(copy_to_command, dest_table: destination_table, dest_fields: fields)
       end
 
-      # Instead of override current 'seq', shared_sequences may contain : 
+      # Instead of override current 'seq', shared_sequences may contain :
       #  - origin_sequences which match task.table name and schema
       #  - destination_sequences which match task.destination_table name and schema
-      #  
+      #
       # Then we can :
       #  - list Missing or Extra for the current tables
       #  - iterate destination_sequences.each to update the value fetch using the corresponding : origin_sequences
       shared_sequences.each do |seq|
-        shared_seq = Sequence.new("public", seq.name, column: seq.column) 
-        value = source.last_value(shared_seq) # should be public.
-        shared_seq = Sequence.new(destination_schema, seq.name, column: seq.column) 
-        destination.execute("SELECT setval(#{escape(quote_ident_full(shared_seq))}, #{escape(value)})") # should be tenant.
+        shared_seq = Sequence.new(table.schema, seq.name, column: seq.column)
+        value = source.last_value(shared_seq) # should be source schema.
+        shared_seq = Sequence.new(destination_schema, seq.name, column: seq.column)
+        destination.execute("SELECT setval(#{escape(quote_ident_full(shared_seq))}, #{escape(value)})") # should be destination_schema_name.
       end
 
       {status: "success"}
