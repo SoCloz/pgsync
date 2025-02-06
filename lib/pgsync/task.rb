@@ -2,7 +2,7 @@ module PgSync
   class Task
     include Utils
 
-    attr_reader :source, :destination, :config, :table, :opts, :destination_table
+    attr_reader :source, :destination, :config, :table, :opts, :destination_table, :destination_schema
     attr_accessor :from_columns, :to_columns, :from_sequences, :to_sequences, :to_primary_key
 
     def initialize(source:, destination:, config:, table:, opts:, tenant:)
@@ -14,6 +14,7 @@ module PgSync
       @from_sequences = []
       @to_sequences = []
       @destination_table = Table.new(tenant, table.name)
+      @destination_schema = tenant
     end
 
     def quoted_table
@@ -166,10 +167,18 @@ module PgSync
         copy(copy_to_command, dest_table: destination_table, dest_fields: fields)
       end
 
-      # update sequences
+      # Instead of override current 'seq', shared_sequences may contain : 
+      #  - origin_sequences which match task.table name and schema
+      #  - destination_sequences which match task.destination_table name and schema
+      #  
+      # Then we can :
+      #  - list Missing or Extra for the current tables
+      #  - iterate destination_sequences.each to update the value fetch using the corresponding : origin_sequences
       shared_sequences.each do |seq|
-        value = source.last_value(seq)
-        destination.execute("SELECT setval(#{escape(quote_ident_full(seq))}, #{escape(value)})")
+        shared_seq = Sequence.new("public", seq.name, column: seq.column) 
+        value = source.last_value(shared_seq) # should be public.
+        shared_seq = Sequence.new(destination_schema, seq.name, column: seq.column) 
+        destination.execute("SELECT setval(#{escape(quote_ident_full(shared_seq))}, #{escape(value)})") # should be tenant.
       end
 
       {status: "success"}
