@@ -139,7 +139,7 @@ module PgSync
 
         # create a temp table
         temp_table = "pgsync_#{rand(1_000_000_000)}"
-        destination.execute("CREATE TEMPORARY TABLE #{quote_ident_full(temp_table)} AS TABLE #{quoted_table} WITH NO DATA")
+        destination.execute("CREATE TEMPORARY TABLE #{quote_ident_full(temp_table)} AS TABLE #{quoted_destination_table} WITH NO DATA")
 
         # load data
         copy(copy_to_command, dest_table: temp_table, dest_fields: fields)
