@@ -34,7 +34,7 @@ module PgSync
 
       tasks.each do |task|
         task.from_columns = source_columns[task.table] || []
-        task.to_columns = destination_columns[task.table] || []
+        task.to_columns = destination_columns[task.destination_table] || []
       end
     end
 
@@ -42,7 +42,7 @@ module PgSync
       destination_primary_keys = primary_keys(destination)
 
       tasks.each do |task|
-        task.to_primary_key = destination_primary_keys[task.table] || []
+        task.to_primary_key = destination_primary_keys[task.destination_table] || []
       end
     end
 
@@ -54,7 +54,7 @@ module PgSync
         shared_columns = Set.new(task.shared_fields)
 
         task.from_sequences = (source_sequences[task.table] || []).select { |s| shared_columns.include?(s.column) }
-        task.to_sequences = (destination_sequences[task.table] || []).select { |s| shared_columns.include?(s.column) }
+        task.to_sequences = (destination_sequences[task.destination_table] || []).select { |s| shared_columns.include?(s.column) }
       end
     end
 

@@ -13,13 +13,15 @@ module PgSync
       "#{schema}.#{name}"
     end
 
+    # other.schema == schema && other.name == name
     def eql?(other)
-      other.schema == schema && other.name == name
+      other.name == name
     end
 
     # override hash when overriding eql?
+    # [schema, name].hash
     def hash
-      [schema, name].hash
+      [name].hash
     end
 
     def to_s

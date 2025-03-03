@@ -13,6 +13,9 @@ module PgSync
       args = @arguments
       opts = @options
 
+      destination_schema_name = opts[:destination_schema_name]
+      destination_schema_name = nil unless destination_schema_name.is_a?(String) && !destination_schema_name.strip.empty?
+
       # only resolve commands from config, not CLI arguments
       [:to, :from].each do |opt|
         opts[opt] ||= resolve_source(config[opt.to_s])
@@ -44,7 +47,7 @@ module PgSync
       resolver = TaskResolver.new(args: args, opts: opts, source: source, destination: destination, config: config, first_schema: first_schema)
       tasks =
         resolver.tasks.map do |task|
-          Task.new(source: source, destination: destination, config: config, table: task[:table], opts: opts.merge(sql: task[:sql]))
+          Task.new(source: source, destination: destination, config: config, table: task[:table], opts: opts.merge(sql: task[:sql]), destination_schema_name: destination_schema_name)
         end
 
       if opts[:in_batches] && tasks.size > 1
